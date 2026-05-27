@@ -12,19 +12,8 @@ const PORT = process.env.PORT || 3000;
 // Trust Render's proxy so IP logging works correctly
 app.set('trust proxy', 1);
 
-// Security headers
-app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'", "cdn.jsdelivr.net", "unpkg.com"],
-      scriptSrcAttr: ["'unsafe-inline'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
-      imgSrc: ["'self'", "data:", "blob:"],
-      connectSrc: ["'self'"],
-    }
-  }
-}));
+// Security headers (CSP disabled — internal tool, not public-facing)
+app.use(helmet({ contentSecurityPolicy: false }));
 
 // CORS — locked to same origin in production; allow localhost for dev
 const allowedOrigins = [

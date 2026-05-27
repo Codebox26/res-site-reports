@@ -1,0 +1,7 @@
+{
+  "api_base_url": "https://res-reports.onrender.com",
+  "sync_api_key": "PASTE_THE_SYNC_API_KEY_FROM_RENDER_ENV_VARS_HERE",
+  "onedrive_base_path": "C:\\Users\\BenedictLefoka\\OneDrive - Rhino Energy Solutions (Pty) Ltd\\Documents\\Claude\\Code\\Daily site reports",
+  "laptop_id": "benedict-laptop",
+  "poll_interval_seconds": 60
+}

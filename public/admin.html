@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#1F3864">
+  <title>Admin — RES Site Reports</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .table-wrapper { overflow-x: auto; }
+    .actions-cell { white-space: nowrap; display: flex; gap: 6px; flex-wrap: wrap; }
+    #login-card { max-width: 380px; margin: 40px auto; }
+  </style>
+</head>
+<body>
+
+<header class="app-header">
+  <div class="logo">RES</div>
+  <div>
+    <h1>Admin Panel</h1>
+    <p>Rhino Energy Solutions</p>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- ── Login ──────────────────────────────────────────────────────── -->
+  <div id="login-card" class="card">
+    <h2>Admin Login</h2>
+    <div class="form-group">
+      <label for="adminPinInput">Admin PIN</label>
+      <input type="password" id="adminPinInput" placeholder="Enter admin PIN" autocomplete="current-password">
+      <div id="admin-pin-error" class="field-error"></div>
+    </div>
+    <button id="admin-login-btn" class="btn btn-primary">Login</button>
+  </div>
+
+  <!-- ── Admin content (hidden until logged in) ─────────────────────── -->
+  <div id="admin-content" style="display:none">
+
+    <!-- Projects section -->
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <h2 style="margin:0">Projects</h2>
+        <button class="btn btn-primary btn-small" onclick="openAddProjectModal()">+ Add Project</button>
+      </div>
+
+      <div id="projects-error" class="alert alert-error" style="display:none"></div>
+
+      <div class="table-wrapper">
+        <table class="admin-table" id="projects-table">
+          <thead>
+            <tr>
+              <th>Project</th>
+              <th>ID</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="projects-tbody">
+            <tr><td colspan="4" style="text-align:center;color:var(--text-muted)">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Recent submissions -->
+    <div class="card">
+      <h2>Recent Submissions</h2>
+      <div id="submissions-error" class="alert alert-error" style="display:none"></div>
+      <div class="table-wrapper">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Project</th>
+              <th>Date</th>
+              <th>Representative</th>
+              <th>Submitted</th>
+              <th>Files</th>
+            </tr>
+          </thead>
+          <tbody id="submissions-tbody">
+            <tr><td colspan="5" style="text-align:center;color:var(--text-muted)">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <button class="btn btn-secondary" onclick="adminLogout()" style="max-width:200px;margin:0 auto;display:block">
+      Log Out
+    </button>
+
+  </div>
+
+</div>
+
+<!-- ── Add/Edit Project Modal ─────────────────────────────────────────────── -->
+<div id="project-modal" class="modal-overlay">
+  <div class="modal">
+    <h3 id="modal-title">Add Project</h3>
+
+    <div class="form-group">
+      <label for="modal-project-name">Project Name <span class="required">*</span></label>
+      <input type="text" id="modal-project-name" placeholder="e.g. Balwin Greenpark">
+      <div id="err-modal-name" class="field-error"></div>
+    </div>
+
+    <div class="form-group">
+      <label for="modal-project-id">Project ID (slug) <span class="required">*</span></label>
+      <input type="text" id="modal-project-id" placeholder="e.g. balwin-greenpark" pattern="[a-z0-9\-]+">
+      <div id="err-modal-id" class="field-error">Lowercase letters, numbers and hyphens only</div>
+      <small style="color:var(--text-muted);font-size:12px">This is used in file paths and cannot be changed later.</small>
+    </div>
+
+    <div class="form-group">
+      <label for="modal-project-pin">Site PIN <span class="required">*</span></label>
+      <input type="text" id="modal-project-pin" placeholder="4–8 digits" inputmode="numeric" maxlength="8">
+      <div id="err-modal-pin" class="field-error"></div>
+    </div>
+
+    <div id="modal-error" class="alert alert-error" style="display:none;margin-top:12px"></div>
+
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" id="modal-save-btn" onclick="saveProject()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Edit PIN Modal ─────────────────────────────────────────────────────── -->
+<div id="pin-modal" class="modal-overlay">
+  <div class="modal">
+    <h3>Change PIN</h3>
+    <p style="color:var(--text-muted);font-size:14px;margin-bottom:16px" id="pin-modal-project-name"></p>
+
+    <div class="form-group">
+      <label for="new-pin-input">New PIN <span class="required">*</span></label>
+      <input type="text" id="new-pin-input" placeholder="4–8 digits" inputmode="numeric" maxlength="8">
+      <div id="err-new-pin" class="field-error"></div>
+    </div>
+
+    <div id="pin-modal-error" class="alert alert-error" style="display:none;margin-top:12px"></div>
+
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closePinModal()">Cancel</button>
+      <button class="btn btn-primary" id="pin-save-btn">Save PIN</button>
+    </div>
+  </div>
+</div>
+
+<script src="/js/api.js"></script>
+<script>
+  let adminToken = null;
+  let editingProjectId = null;
+
+  // ── Login ───────────────────────────────────────────────────────────────────
+  document.getElementById('admin-login-btn').addEventListener('click', async () => {
+    const pin = document.getElementById('adminPinInput').value.trim();
+    const errEl = document.getElementById('admin-pin-error');
+    if (!pin) { errEl.textContent = 'PIN is required'; errEl.classList.add('visible'); return; }
+
+    const btn = document.getElementById('admin-login-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Logging in…';
+
+    try {
+      const result = await API.adminLogin(pin);
+      adminToken = result.token;
+      sessionStorage.setItem('res_admin_token', adminToken);
+      document.getElementById('login-card').style.display = 'none';
+      document.getElementById('admin-content').style.display = '';
+      await loadProjects();
+      await loadSubmissions();
+    } catch (err) {
+      errEl.textContent = err.message || 'Invalid PIN';
+      errEl.classList.add('visible');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = 'Login';
+    }
+  });
+
+  document.getElementById('adminPinInput').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') document.getElementById('admin-login-btn').click();
+  });
+
+  // Re-use stored session if valid
+  const stored = sessionStorage.getItem('res_admin_token');
+  if (stored) {
+    try {
+      const payload = JSON.parse(atob(stored));
+      if (payload.admin && Date.now() < payload.exp) {
+        adminToken = stored;
+        document.getElementById('login-card').style.display = 'none';
+        document.getElementById('admin-content').style.display = '';
+        loadProjects();
+        loadSubmissions();
+      }
+    } catch {}
+  }
+
+  function adminLogout() {
+    sessionStorage.removeItem('res_admin_token');
+    adminToken = null;
+    location.reload();
+  }
+
+  // ── Projects ────────────────────────────────────────────────────────────────
+  async function loadProjects() {
+    const tbody = document.getElementById('projects-tbody');
+    const errEl = document.getElementById('projects-error');
+    errEl.style.display = 'none';
+
+    try {
+      const projects = await API.getAdminProjects(adminToken);
+      tbody.innerHTML = '';
+
+      if (!projects.length) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text-muted)">No projects yet.</td></tr>';
+        return;
+      }
+
+      for (const p of projects) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><strong>${p.name}</strong></td>
+          <td style="font-family:monospace;font-size:13px">${p.id}</td>
+          <td><span class="badge ${p.active ? 'badge-active' : 'badge-inactive'}">${p.active ? 'Active' : 'Inactive'}</span></td>
+          <td>
+            <div class="actions-cell">
+              <button class="btn btn-icon btn-small" onclick="changePIN('${p.id}','${p.name}')">Change PIN</button>
+              <button class="btn btn-icon btn-small" onclick="downloadQR('${p.id}','${p.name}')">QR Code</button>
+              <button class="btn btn-icon btn-small" onclick="toggleActive('${p.id}',${p.active})">${p.active ? 'Deactivate' : 'Activate'}</button>
+            </div>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      }
+    } catch (err) {
+      errEl.textContent = err.message;
+      errEl.style.display = '';
+    }
+  }
+
+  // ── Submissions ─────────────────────────────────────────────────────────────
+  async function loadSubmissions() {
+    const tbody = document.getElementById('submissions-tbody');
+    const errEl = document.getElementById('submissions-error');
+    errEl.style.display = 'none';
+
+    try {
+      const subs = await API.getAdminSubmissions({}, adminToken);
+      tbody.innerHTML = '';
+
+      if (!subs.length) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-muted)">No submissions yet.</td></tr>';
+        return;
+      }
+
+      for (const s of subs) {
+        const date = new Date(s.submitted_at).toLocaleString('en-ZA', { timeZone: 'Africa/Johannesburg', dateStyle: 'short', timeStyle: 'short' });
+        const docxBtn = s.docx_url ? `<a href="${s.docx_url}" class="btn btn-icon btn-small" download>⬇ DOCX</a>` : '';
+        const photoCount = s.photo_urls?.length || 0;
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${s.project_id}</td>
+          <td>${s.report_date}</td>
+          <td>${s.representative || '—'}</td>
+          <td style="font-size:13px">${date}</td>
+          <td><div class="actions-cell">${docxBtn}<span style="font-size:13px;color:var(--text-muted)">${photoCount} photo${photoCount !== 1 ? 's' : ''}</span></div></td>
+        `;
+        tbody.appendChild(tr);
+      }
+    } catch (err) {
+      errEl.textContent = err.message;
+      errEl.style.display = '';
+    }
+  }
+
+  // ── Add project modal ───────────────────────────────────────────────────────
+  function openAddProjectModal() {
+    editingProjectId = null;
+    document.getElementById('modal-title').textContent = 'Add Project';
+    document.getElementById('modal-project-name').value = '';
+    document.getElementById('modal-project-id').value = '';
+    document.getElementById('modal-project-id').disabled = false;
+    document.getElementById('modal-project-pin').value = '';
+    document.getElementById('modal-error').style.display = 'none';
+    document.getElementById('project-modal').classList.add('open');
+
+    // Auto-generate ID from name
+    document.getElementById('modal-project-name').addEventListener('input', function() {
+      if (!editingProjectId) {
+        document.getElementById('modal-project-id').value = this.value
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-|-$/g, '');
+      }
+    });
+  }
+
+  function closeModal() {
+    document.getElementById('project-modal').classList.remove('open');
+  }
+
+  async function saveProject() {
+    const name = document.getElementById('modal-project-name').value.trim();
+    const id = document.getElementById('modal-project-id').value.trim();
+    const pin = document.getElementById('modal-project-pin').value.trim();
+    const errEl = document.getElementById('modal-error');
+    errEl.style.display = 'none';
+
+    if (!name || !id || !pin) {
+      errEl.textContent = 'All fields are required';
+      errEl.style.display = '';
+      return;
+    }
+
+    if (!/^[a-z0-9-]+$/.test(id)) {
+      errEl.textContent = 'Project ID must be lowercase letters, numbers and hyphens only';
+      errEl.style.display = '';
+      return;
+    }
+
+    const btn = document.getElementById('modal-save-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>';
+
+    try {
+      await API.createProject({ id, name, pin }, adminToken);
+      closeModal();
+      await loadProjects();
+    } catch (err) {
+      errEl.textContent = err.message;
+      errEl.style.display = '';
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = 'Save';
+    }
+  }
+
+  // ── Change PIN modal ────────────────────────────────────────────────────────
+  let pinChangeProjectId = null;
+
+  function changePIN(projectId, projectName) {
+    pinChangeProjectId = projectId;
+    document.getElementById('pin-modal-project-name').textContent = projectName;
+    document.getElementById('new-pin-input').value = '';
+    document.getElementById('pin-modal-error').style.display = 'none';
+    document.getElementById('pin-modal').classList.add('open');
+  }
+
+  function closePinModal() {
+    document.getElementById('pin-modal').classList.remove('open');
+  }
+
+  document.getElementById('pin-save-btn').addEventListener('click', async () => {
+    const pin = document.getElementById('new-pin-input').value.trim();
+    const errEl = document.getElementById('pin-modal-error');
+    if (!pin) { errEl.textContent = 'PIN is required'; errEl.style.display = ''; return; }
+
+    const btn = document.getElementById('pin-save-btn');
+    btn.disabled = true;
+
+    try {
+      await API.updateProject(pinChangeProjectId, { pin }, adminToken);
+      closePinModal();
+    } catch (err) {
+      errEl.textContent = err.message;
+      errEl.style.display = '';
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  // ── Toggle active ───────────────────────────────────────────────────────────
+  async function toggleActive(projectId, currentlyActive) {
+    try {
+      await API.updateProject(projectId, { active: !currentlyActive }, adminToken);
+      await loadProjects();
+    } catch (err) {
+      alert('Failed to update project: ' + err.message);
+    }
+  }
+
+  // ── QR code download ────────────────────────────────────────────────────────
+  function downloadQR(projectId, projectName) {
+    // The QR endpoint requires the admin token in the header, so we can't use a plain <a> link.
+    // Fetch the PNG and trigger a download.
+    fetch(`/api/qr/${projectId}`, { headers: { 'x-admin-token': adminToken } })
+      .then(res => {
+        if (!res.ok) throw new Error('QR generation failed');
+        return res.blob();
+      })
+      .then(blob => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `QR_${projectName.replace(/[^A-Za-z0-9]/g, '_')}.png`;
+        a.click();
+        URL.revokeObjectURL(url);
+      })
+      .catch(err => alert('QR error: ' + err.message));
+  }
+
+  // Close modals on overlay click
+  document.querySelectorAll('.modal-overlay').forEach(overlay => {
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) {
+        overlay.classList.remove('open');
+      }
+    });
+  });
+</script>
+
+</body>
+</html>

@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <meta name="theme-color" content="#1F3864">
+  <title>RES Daily Site Reports</title>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<header class="app-header">
+  <div class="logo">RES</div>
+  <div>
+    <h1>Daily Site Reports</h1>
+    <p>Rhino Energy Solutions</p>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- Offline badge -->
+  <div id="offline-badge" class="offline-badge">No internet connection</div>
+
+  <!-- Expired session hint -->
+  <div id="expired-banner" class="alert alert-warn" style="display:none">
+    <span class="alert-icon">⏱</span>
+    <div>Your session expired. Please select your project and enter your PIN again.</div>
+  </div>
+
+  <div class="card">
+    <h2>Select Project</h2>
+    <div id="project-list">
+      <div class="alert alert-info">
+        <span class="spinner" style="border-color:rgba(13,71,161,0.3);border-top-color:#0D47A1"></span>
+        <span>Loading projects…</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- PIN entry — hidden until project selected -->
+  <div id="pin-section" class="card" style="display:none">
+    <h2>Enter PIN</h2>
+    <div class="form-group">
+      <label for="pinInput">Site PIN <span class="required">*</span></label>
+      <input
+        type="password"
+        id="pinInput"
+        class="pin-input"
+        inputmode="numeric"
+        pattern="[0-9]*"
+        maxlength="8"
+        placeholder="••••"
+        autocomplete="current-password"
+      >
+      <div id="pin-error" class="field-error"></div>
+    </div>
+    <button id="pin-submit" class="btn btn-primary">Open Report</button>
+  </div>
+
+  <!-- Admin link -->
+  <p style="text-align:center; margin-top:24px">
+    <a href="/admin.html" style="color:var(--text-muted);font-size:14px">Admin</a>
+  </p>
+
+</div>
+
+<script src="/js/api.js"></script>
+<script src="/js/app.js"></script>
+<script>
+  // Show expired banner if redirected from report page with expired session
+  if (new URLSearchParams(location.search).get('expired') === '1') {
+    document.getElementById('expired-banner').style.display = '';
+  }
+
+  // Register service worker for PWA
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/service-worker.js').catch(console.warn);
+  }
+</script>
+
+</body>
+</html>

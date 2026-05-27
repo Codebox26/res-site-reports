@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <meta name="theme-color" content="#1F3864">
+  <title>Daily Site Report — RES</title>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<header class="app-header">
+  <div class="logo">RES</div>
+  <div>
+    <h1>Daily Site Report</h1>
+    <p id="project-name-display">Loading…</p>
+  </div>
+</header>
+
+<div id="offline-badge" class="offline-badge">No internet — will save offline</div>
+
+<div class="container">
+
+  <!-- Edit mode banner -->
+  <div id="edit-banner" class="alert alert-info" style="display:none">
+    <span class="alert-icon">✏</span>
+    <div>Editing today's report. Your changes will replace the previous submission.</div>
+  </div>
+
+  <!-- Locked banner -->
+  <div id="locked-banner" class="alert alert-warn" style="display:none">
+    <span class="alert-icon">🔒</span>
+    <div>This report has been locked and cannot be edited.</div>
+  </div>
+
+  <!-- "Already submitted today" hint -->
+  <div id="edit-hint" class="alert alert-info" style="display:none">
+    <span class="alert-icon">ℹ</span>
+    <div>You've already submitted a report today. <a href="/report.html?edit=true" style="color:inherit;font-weight:700">Edit it here.</a></div>
+  </div>
+
+  <!-- Sync banner for offline queue -->
+  <div id="sync-banner" class="alert alert-info" style="display:none">
+    <span class="alert-icon">🔄</span>
+    <div id="sync-banner-text">Syncing offline submissions…</div>
+  </div>
+
+  <form id="report-form" novalidate>
+
+    <!-- ── Date & Times ─────────────────────────────────────────────────── -->
+    <div class="card">
+      <h2>Report Details</h2>
+
+      <div class="form-group">
+        <label for="reportDate">Date <span class="required">*</span></label>
+        <input type="date" id="reportDate" name="reportDate" required>
+        <div id="err-reportDate" class="field-error"></div>
+      </div>
+
+      <div class="time-row">
+        <div class="form-group">
+          <label for="arrivalTime">Arrival Time <span class="required">*</span></label>
+          <input type="time" id="arrivalTime" name="arrivalTime" value="07:00" required>
+          <div id="err-arrivalTime" class="field-error"></div>
+        </div>
+        <div class="form-group">
+          <label for="departureTime">Departure Time <span class="required">*</span></label>
+          <input type="time" id="departureTime" name="departureTime" value="15:00" required>
+          <div id="err-departureTime" class="field-error"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Team ────────────────────────────────────────────────────────── -->
+    <div class="card">
+      <h2>Site Team</h2>
+
+      <div class="form-group">
+        <label for="representative">RES Team Representative <span class="required">*</span></label>
+        <input type="text" id="representative" name="representative" placeholder="e.g. Benedict Lefoka" required>
+        <div id="err-representative" class="field-error"></div>
+      </div>
+
+      <div class="form-group">
+        <label for="teamOnSite">RES Team on Site <span class="required">*</span></label>
+        <textarea id="teamOnSite" name="teamOnSite" placeholder="List all RES team members present" required></textarea>
+        <div id="err-teamOnSite" class="field-error"></div>
+      </div>
+
+      <!-- Sub-contractors -->
+      <div class="form-group">
+        <label>Sub-contractors on Site</label>
+        <div id="sub-contractors-container"></div>
+        <button type="button" id="add-sub-btn" class="btn btn-secondary btn-small" style="margin-top:8px">
+          + Add Sub-contractor
+        </button>
+      </div>
+    </div>
+
+    <!-- ── Works ───────────────────────────────────────────────────────── -->
+    <div class="card">
+      <h2>Works</h2>
+
+      <div class="form-group">
+        <label for="worksCompleted">Works Completed Today <span class="required">*</span></label>
+        <textarea id="worksCompleted" name="worksCompleted" placeholder="Describe what was completed today…" style="min-height:140px" required></textarea>
+        <div id="err-worksCompleted" class="field-error"></div>
+      </div>
+
+      <!-- Friday dropdown — only shown when date is a Friday -->
+      <div id="friday-choice-row" class="form-group" style="display:none">
+        <label for="worksPlannedChoice">Works Planned For</label>
+        <select id="worksPlannedChoice" name="worksPlannedChoice">
+          <option value="Tomorrow (Saturday)">Tomorrow (Saturday)</option>
+          <option value="Monday" selected>Monday</option>
+          <option value="Tuesday">Tuesday</option>
+          <option value="Wednesday">Wednesday</option>
+          <option value="Thursday">Thursday</option>
+          <option value="Friday">Friday</option>
+          <option value="Next Monday">Next Monday</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label id="works-planned-label" for="worksPlanned">Works Planned Tomorrow: <span class="required">*</span></label>
+        <textarea id="worksPlanned" name="worksPlanned" placeholder="Describe planned work…" style="min-height:140px" required></textarea>
+        <div id="err-worksPlanned" class="field-error"></div>
+      </div>
+    </div>
+
+    <!-- ── HSE & Comments ──────────────────────────────────────────────── -->
+    <div class="card">
+      <h2>HSE &amp; Comments</h2>
+
+      <div class="form-group">
+        <label for="hseIssues">HSE Issues</label>
+        <textarea id="hseIssues" name="hseIssues" placeholder="None">None</textarea>
+      </div>
+
+      <div class="form-group">
+        <label for="comments">Comments</label>
+        <textarea id="comments" name="comments" placeholder="None">None</textarea>
+      </div>
+    </div>
+
+    <!-- ── Photos ──────────────────────────────────────────────────────── -->
+    <div class="card">
+      <h2>Site Photos</h2>
+      <p style="font-size:14px;color:var(--text-muted);margin-bottom:14px">
+        Up to 8 photos. Photos are automatically compressed before uploading.
+      </p>
+
+      <div id="photo-upload-area" class="photo-upload-area">
+        <input type="file" accept="image/*" capture="environment" multiple>
+        <div class="photo-upload-icon">📷</div>
+        <div class="photo-upload-text">Tap to take a photo or choose from gallery</div>
+        <div class="photo-upload-hint">Max 8 photos · Compressed automatically</div>
+      </div>
+
+      <div id="photo-grid" class="photo-grid"></div>
+      <p id="photo-counter" style="font-size:13px;color:var(--text-muted);margin-top:8px"></p>
+    </div>
+
+    <!-- ── Submit ──────────────────────────────────────────────────────── -->
+    <div id="submit-error" class="alert alert-error" style="display:none"></div>
+
+    <button type="submit" id="submit-btn" class="btn btn-primary" style="font-size:18px;min-height:56px">
+      Submit Report
+    </button>
+
+    <p style="text-align:center;margin-top:12px">
+      <a href="/" style="color:var(--text-muted);font-size:14px">← Back to Projects</a>
+    </p>
+
+  </form>
+
+  <!-- ── Success screen ───────────────────────────────────────────────── -->
+  <div id="success-screen" style="display:none">
+    <div class="success-icon">✓</div>
+    <h2>Report Submitted!</h2>
+    <p>Your daily site report has been saved and the Word document is ready.</p>
+
+    <div id="offline-success-msg" class="alert alert-warn" style="display:none;margin-bottom:20px">
+      <span class="alert-icon">📡</span>
+      <div>No internet connection — your report was saved offline and will sync automatically when you're back online.</div>
+    </div>
+
+    <a id="docx-download" class="btn btn-secondary" style="display:none;margin-bottom:12px" download>
+      ⬇ Download Word Report
+    </a>
+
+    <button class="btn btn-primary" onclick="location.href='/report.html'">
+      Submit Another Report
+    </button>
+    <button class="btn btn-secondary" style="margin-top:10px" onclick="location.href='/'">
+      ← Back to Projects
+    </button>
+  </div>
+
+</div>
+
+<script src="/js/api.js"></script>
+<script src="/js/photos.js"></script>
+<script src="/js/app.js"></script>
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/service-worker.js').catch(console.warn);
+  }
+</script>
+
+</body>
+</html>
